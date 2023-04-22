@@ -1,2 +1,9 @@
-Debug
-.settings
+/firmware/Debug
+/firmware/.settings
+/firmware/.cproject
+/firmware/.mxproject
+/firmware/.project
+/firmware/control_pid Debug.launch
+/firmware/control_pid.ioc
+/firmware/STM32F429ZITX_FLASH.ld
+/firmware/STM32F429ZITX_RAM.ld
