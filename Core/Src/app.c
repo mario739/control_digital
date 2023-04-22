@@ -2,7 +2,7 @@
  * app.c
  *
  *  Created on: Mar 27, 2023
- *      Author: ferna
+ *      Author: Mario Aguilar
  */
 
 #include "app.h"
@@ -27,24 +27,22 @@ void receiveData(float *buffer);
 
 t_ILSdata* tILS1;
 
-
-uint8_t* p_prueba;
 uint32_t data;
-volatile GPIO_PinState state;
 uint8_t buffer_data[30];
 uint8_t p;
 uint16_t dacValue;
-uint8_t signal_out;
+
+
 float U;
 float X;
 float y = 0.0f;
 float r = 0.0f;
 float u_1 = 0.0f;
 
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	HAL_GPIO_TogglePin(signal_in_GPIO_Port, signal_in_Pin);
-	signal_out=HAL_GPIO_ReadPin(signal_in_GPIO_Port,signal_in_Pin);
 }
 
 void ILS_Task (void* taskParmPtr)
@@ -66,14 +64,14 @@ void task_pid(void *parameter)
 	uint32_t h_ms = 4;
 	float h_s = ((float)h_ms)/1000.0f;
 	pidInit(&PsPIDController,
-			5.0f,		// Kp
-			1.0f / h_s, // Ki
-			0.1f * h_s, // Kd
-			h_s,		// h en [s]
-			20.0f,		// N
-			1.0f,		// b
-			0.0f,		// u_min
-			3.3f		// u_max
+			5.0f,
+			1.0f / h_s,
+			0.1f * h_s,
+			h_s,
+			20.0f,
+			1.0f,
+			0.0f,
+			3.3f
 	);
 	while (1)
 	{
@@ -81,16 +79,18 @@ void task_pid(void *parameter)
 		HAL_ADC_PollForConversion(&hadc1, 0);
 		y =(float)(HAL_ADC_GetValue(&hadc1) * (3.3 / 4095));
 		HAL_ADC_Stop(&hadc1);
-		r = (HAL_GPIO_ReadPin(signal_in_GPIO_Port, signal_in_Pin) *2.0);
+		if (HAL_GPIO_ReadPin(signal_in_GPIO_Port, signal_in_Pin)==GPIO_PIN_SET) {
+			r=2.0;
+		}
+		else {
+			r=1.0;
+		}
 		u_1 = pidCalculateControllerOutput(&PsPIDController, y, r);
-		//sprintf(buffer_data, "%f\n",u_1);
-		u_1 =u_1*1240.9090f;//(4095 / 3.3);
-		//u_1 =u_1*2730.0f;//(4095 / 1.5)
 		sprintf(buffer_data, "%f\n",y);
+		u_1 =u_1*1240.9090f;//(4095 / 3.3);
 		HAL_UART_Transmit(&huart3, buffer_data, strlen(buffer_data), 1);
 		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R,u_1 );
 		pidUpdateController(&PsPIDController, y, r);
-		//vTaskDelay(4);
 	}
 }
 
@@ -104,8 +104,6 @@ void receiveData(float *buffer)
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dacValue);
 	//sprintf(buffer_data, "%f\n",U);
 	//HAL_UART_Transmit(&huart3, buffer_data, strlen(buffer_data), 10);
-	//vTaskDelay(5);
-	//U = (float)HAL_GPIO_ReadPin(signal_output_GPIO_Port, signal_output_Pin);
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 0);
 	X = (float)HAL_ADC_GetValue(&hadc1) * (3.3 / 4095.0);
